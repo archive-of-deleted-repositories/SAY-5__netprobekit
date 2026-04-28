@@ -7,7 +7,7 @@ import socket
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from netprobe.probes import can, ethernet, firmware, sensor
@@ -45,7 +45,7 @@ def run_session(target_bin: Path, out_dir: Path) -> dict:
             proc.kill()
 
     report["session"] = {
-        "started_at": datetime.now(timezone.utc).isoformat(),
+        "started_at": datetime.now(UTC).isoformat(),
         "target_port": port,
     }
     out = out_dir / f"report-{int(time.time())}.json"

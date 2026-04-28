@@ -49,7 +49,7 @@ class Transport:
 
     def wait_ready(self, attempts: int = 10, sleep: float = 0.1) -> None:
         """Block until the target answers a ping; raise if it never does."""
-        for i in range(attempts):
+        for _ in range(attempts):
             try:
                 r = self.request("ping")
                 if r.get("ok"):

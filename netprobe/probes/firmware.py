@@ -7,7 +7,6 @@ from dataclasses import dataclass
 
 from netprobe.transport import Transport
 
-
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+(?:-[a-z0-9.-]+)?$")
 
 
