@@ -176,6 +176,80 @@ static void handle(int fd) {
         send_line(fd, out);
         return;
     }
+
+    // ------------------------------------------------------------------
+    // CAN error-injection scenarios — used to validate that the probe-
+    // side controller logic actually catches malformed frames. The
+    // target tracks an error counter that's bumped on each injected
+    // fault; once it crosses BUS_OFF_THRESHOLD the bus state flips to
+    // "bus_off" and subsequent reads report stale data, mirroring the
+    // CAN 2.0B fault-confinement state machine.
+    //
+    // r.idstr carries the fault kind: "crc" | "stuff" | "ack" | "form".
+    // ------------------------------------------------------------------
+    static int can_error_count = 0;
+    enum { BUS_OFF_THRESHOLD = 5 };
+    if (!strcmp(r.op, "can_inject_fault")) {
+        const char *fault = r.idstr[0] ? r.idstr : "crc";
+        can_error_count++;
+        const char *bus = can_error_count >= BUS_OFF_THRESHOLD
+                          ? "bus_off"
+                          : (can_error_count >= 3 ? "error_passive" : "error_active");
+
+        // Build a malformed frame whose shape encodes the fault kind.
+        unsigned can_id = 0x123;
+        int dlc = 8;
+        long crc_actual = 0xdeadbeef;
+        long crc_expected = 0xdeadbeef;
+        const char *err = "";
+
+        if (!strcmp(fault, "crc")) {
+            // Same payload, mismatched CRC — the probe's validator
+            // recomputes and compares.
+            crc_expected = 0xa5a5a5a5;
+            err = "crc_mismatch";
+        } else if (!strcmp(fault, "stuff")) {
+            // Bit-stuffing violation — represented as a frame with
+            // dlc=9 (illegal in classic CAN; max 8).
+            dlc = 9;
+            err = "stuff_bit_violation";
+        } else if (!strcmp(fault, "ack")) {
+            // No ACK from any other node.
+            err = "ack_missing";
+        } else if (!strcmp(fault, "form")) {
+            // Form error — invalid 12-bit ID (we cap at 11 bits).
+            can_id = 0xFFF;
+            err = "form_error";
+        } else {
+            err = "unknown_fault";
+            can_error_count--;  // don't penalize on unknown
+        }
+
+        snprintf(out, sizeof(out),
+            "{\"ok\":true,\"fault\":\"%s\",\"err\":\"%s\","
+             "\"frame\":{\"id\":%u,\"dlc\":%d,\"data\":[1,2,3,4,5,6,7,8],"
+             "\"crc_actual\":%ld,\"crc_expected\":%ld},"
+             "\"bus_state\":\"%s\",\"error_count\":%d}",
+            fault, err, can_id, dlc, crc_actual, crc_expected, bus, can_error_count);
+        send_line(fd, out);
+        return;
+    }
+    if (!strcmp(r.op, "can_bus_state")) {
+        const char *bus = can_error_count >= BUS_OFF_THRESHOLD
+                          ? "bus_off"
+                          : (can_error_count >= 3 ? "error_passive" : "error_active");
+        snprintf(out, sizeof(out),
+            "{\"ok\":true,\"bus_state\":\"%s\",\"error_count\":%d}",
+            bus, can_error_count);
+        send_line(fd, out);
+        return;
+    }
+    if (!strcmp(r.op, "can_bus_reset")) {
+        can_error_count = 0;
+        snprintf(out, sizeof(out), "{\"ok\":true,\"bus_state\":\"error_active\"}");
+        send_line(fd, out);
+        return;
+    }
     if (!strcmp(r.op, "sensor_read")) {
         for (int i = 0; i < NSENS; ++i) {
             if (!strcmp(SENSORS[i].id, r.idstr)) {
