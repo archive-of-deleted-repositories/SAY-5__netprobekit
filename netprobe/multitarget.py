@@ -19,6 +19,7 @@ import subprocess
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import UTC
 from pathlib import Path
 from typing import Any
 
@@ -113,7 +114,7 @@ def run_rack(
                 started_at=t0, elapsed_s=time.perf_counter() - t0,
                 report=payload,
             )
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             tr = TargetReport(
                 name=spec.name, port=port, ok=False, error=str(e),
                 started_at=t0, elapsed_s=time.perf_counter() - t0,
@@ -154,8 +155,8 @@ def _wait_ready(port: int, timeout_s: float) -> None:
 
 
 def _iso_now() -> str:
-    from datetime import datetime, timezone
-    return datetime.now(timezone.utc).isoformat()
+    from datetime import datetime
+    return datetime.now(UTC).isoformat()
 
 
 def report_to_dict(r: RackReport) -> dict[str, Any]:

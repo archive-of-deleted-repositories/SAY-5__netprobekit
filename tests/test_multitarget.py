@@ -43,7 +43,7 @@ def test_parallelism_is_observable_in_wall_time():
     rack = run_rack(specs)
     elapsed = time.perf_counter() - t0
     assert rack.all_ok
-    # Generous: parallel should beat 1.5× a single target's elapsed.
+    # Generous: parallel should beat 1.5x a single target's elapsed.
     longest = max(t.elapsed_s for t in rack.targets)
     assert elapsed < longest * 1.7, (
         f"rack elapsed {elapsed:.2f}s vs longest single {longest:.2f}s — "
