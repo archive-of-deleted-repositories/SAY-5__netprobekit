@@ -37,7 +37,7 @@ def tcp_probe(host: str, port: int, timeout_s: float = 2.0) -> TCPProbeResult:
         with socket.create_connection((host, port), timeout=timeout_s) as _s:
             elapsed = (time.perf_counter() - start) * 1000.0
             return TCPProbeResult(host=host, port=port, success=True, latency_ms=elapsed)
-    except (OSError, socket.timeout) as e:
+    except (TimeoutError, OSError) as e:
         elapsed = (time.perf_counter() - start) * 1000.0
         return TCPProbeResult(
             host=host, port=port, success=False,
